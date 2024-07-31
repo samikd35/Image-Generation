@@ -8,19 +8,66 @@
     <script src="https://gradio.app/gradio.js"></script>
 </head>
 <body>
-    <div id="interface-container"></div>
+    <div id="interface-container">
+        <h1>AI Image Captioning</h1>
+        <p>Upload an image and get an AI-generated caption in JSON format. Powered by the BLIP model.</p>
+        <div id="gradio-interface"></div>
+    </div>
+    
     <script>
-        const interface = gr.Interface(
-            fn=process_image,
-            inputs=gr.inputs.Image(type="filepath", label="Upload Image"),
-            outputs=gr.outputs.Textbox(label="Image Caption JSON"),
-            title="AI Image Captioning",
-            description="Upload an image and get an AI-generated caption in JSON format. Powered by the BLIP model.",
-            article="This tool uses the BLIP model from Salesforce to generate captions for images. Simply upload an image, and the model will generate a descriptive caption for it.",
-            css=custom_css
-        );
+        async function queryImage(imagePath) {
+            const API_URL = "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-large";
+            const headers = {
+                "Authorization": "Bearer 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"
+            };
 
-        interface.render("#interface-container");
+            const response = await fetch(imagePath);
+            const data = await response.blob();
+
+            const responseData = await fetch(API_URL, {
+                method: 'POST',
+                headers: headers,
+                body: data
+            });
+
+            return await responseData.json();
+        }
+
+        function formatOutputAsJson(imagePath, processedData) {
+            return JSON.stringify({
+                "image_filename": imagePath,
+                "caption": processedData[0]['generated_text']
+            }, null, 4);
+        }
+
+        async function processImage(imagePath) {
+            const processedData = await queryImage(imagePath);
+            return formatOutputAsJson(imagePath, processedData);
+        }
+
+        const custom_css = `
+            #interface-container {
+                max-width: 600px;
+                margin: auto;
+                padding: 20px;
+                text-align: center;
+                background: white;
+                border-radius: 8px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            }
+        `;
+
+        gr.Interface(
+            processImage,
+            gr.inputs.Image(type="filepath", label="Upload Image"),
+            gr.outputs.Textbox(label="Image Caption JSON"),
+            {
+                title: "AI Image Captioning",
+                description: "Upload an image and get an AI-generated caption in JSON format. Powered by the BLIP model.",
+                article: "This tool uses the BLIP model from Salesforce to generate captions for images. Simply upload an image, and the model will generate a descriptive caption for it.",
+                css: custom_css
+            }
+        ).render("#gradio-interface");
     </script>
 </body>
 </html>
